@@ -7,6 +7,7 @@ import "io/ioutil"
 import "encoding/json"
 import "errors"
 import "os"
+import "strconv"
 
 type RunnerCard struct {
 	LastModified 	string 	`json:"last-modified"`
@@ -37,6 +38,32 @@ type RunnerCard struct {
 	ImageSrc		string	`json:"imagesrc"`
 	LargeImageSrc	string	`json:"largeimagesrc"`
 }
+
+const (
+	_ = iota
+	core
+	wla	
+	ta
+	ca
+	asis
+	hs
+	fp
+	cac
+	om
+	st
+	mt
+	tc
+	fal
+	dt
+	hap
+	up
+	tsb
+	fc
+	uao
+	atr
+)
+
+const CARDPATH string = "/dev/Go/src/github.com/veille/GoRunner/cards"
 
 // Used to generate a request to a URL and return the content supplied
 func getContent(url string) ([]byte, error) {
@@ -111,9 +138,10 @@ func exists(path string) (bool, error) {
 }
 
 func createCardFile(card *RunnerCard) error {
+	cardCode := card.Code[(len(card.Code) - 3): (len(card.Code))]
+
 	// path = /set/side/faction/
-	path := fmt.Sprintf("/dev/Go/GoRunner/cards/%s/%s/%s/", card.Set_Code, card.Side_Code,
-		card.Faction_Code)
+	path := fmt.Sprintf("%s/%s/", CARDPATH, card.Set_Code)
 	pathExists, err := exists(path)
 	if (!pathExists) {
 		if err != nil {
@@ -121,8 +149,7 @@ func createCardFile(card *RunnerCard) error {
 		}
 		os.MkdirAll(path, 0700)
 	}
-	path = fmt.Sprintf("/dev/Go/GoRunner/cards/%s/%s/%s/%d.card", card.Set_Code, card.Side_Code,
-		card.Faction_Code, card.Number)
+	path = fmt.Sprintf("%s/%s/%s.card", CARDPATH, card.Set_Code, cardCode)
 	file, err := os.Create(path)
 	check(err)
 	defer file.Close()
@@ -133,8 +160,7 @@ func createCardFile(card *RunnerCard) error {
 	_, err = file.Write(output)
 	check(err)
 	
-	path = fmt.Sprintf("/dev/Go/GoRunner/cards/%s/%s/%s/images", card.Set_Code, card.Side_Code,
-		card.Faction_Code)
+	path = fmt.Sprintf("%s/%s/images", CARDPATH, card.Set_Code)
 	pathExists, err = exists(path)
 	if (!pathExists) {
 		if err != nil {
@@ -142,8 +168,7 @@ func createCardFile(card *RunnerCard) error {
 		}
 		os.MkdirAll(path, 0700)
 	}
-	path = fmt.Sprintf("/dev/Go/GoRunner/cards/%s/%s/%s/images/%d.png", card.Set_Code, card.Side_Code,
-		card.Faction_Code, card.Number)
+	path = fmt.Sprintf("%s/%s/images/%s.png", CARDPATH, card.Set_Code, cardCode)
 	pathExists, err = exists(path)
 	if (!pathExists) {
 		fmt.Println("New image created\n")
@@ -161,19 +186,127 @@ func createCardFile(card *RunnerCard) error {
 	return nil
 }
 
-func main() {	
-	currentCard := 1001
-	for ;currentCard < 1012; {
-		cardString := fmt.Sprintf("0%d", currentCard)
-		card, err := getCardData(cardString)
-		if err != nil {
-			fmt.Print(err)
-			fmt.Printf("\nCurrent card: 0%d\n", currentCard)
-			break;
+func getSetData(startCode, endCode int) {
+	currentCard := startCode
+	//fmt.Printf("Start: %d  End: %d\n", startCode, endCode)
+	for ;currentCard <= endCode; {
+		var cardString string
+		if currentCard < 10000 {
+			cardString = fmt.Sprintf("0%d", currentCard)
+		} else {
+			cardString = fmt.Sprintf("%d", currentCard)
 		}
-		fmt.Printf("%s successfully retrieved...\n", card.Title)
-		err = createCardFile(card)
-		check(err)
+		if (!alreadyRetrieved(cardString)) {
+			card, err := getCardData(cardString)
+			if err != nil {
+				fmt.Print(err)
+				fmt.Printf("\nCurrent card: 0%d\n", currentCard)
+				break;
+			}
+			fmt.Printf("%s successfully retrieved...\n", card.Title)
+			err = createCardFile(card)
+			check(err)
+		} else {
+			fmt.Printf("Card %s has already been retrieved\n", cardString)
+		}
 		currentCard++
 	}
+}
+
+func getSetName(setCode string) (string, error) {
+	intSetCode, err := strconv.Atoi(setCode)
+	check(err)
+	switch intSetCode {
+		case core:
+			return "core", nil
+		case wla:
+			return "wla", nil
+		case ta:
+			return "ta", nil
+		case ca:
+			return "ca", nil
+		case asis:
+			return "asis", nil
+		case hs:
+			return "hs", nil
+		case fp:
+			return "fp", nil
+		case cac:
+			return "cac", nil
+		case om:
+			return "om", nil
+		case st:
+			return "st", nil
+		case mt:
+			return "mt", nil
+		case tc:
+			return "tc", nil
+		case fal:
+			return "fal", nil
+		case dt:
+			return "dt", nil
+		case hap:
+			return "hap", nil
+		case up:
+			return "up", nil
+		case tsb:
+			return "tsb", nil
+		case fc:
+			return "fc", nil
+		case uao:
+			return "uao", nil
+		case atr:
+			return "atr", nil
+	}
+	err = errors.New("!! Set name not found")
+	return "", err
+}
+
+func alreadyRetrieved(code string) bool {
+	setCode := code[0: len(code) - 3]
+	cardCode := code[len(code) - 3: len(code)]
+	setName, err := getSetName(setCode)
+	check(err)
+	
+	path := fmt.Sprintf("%s/%s/%s.card", CARDPATH, setName, cardCode)
+	pathExists, err := exists(path)
+	check(err)
+	
+	return pathExists
+}
+
+func main() {	
+	// Core Set 				-- 01001 -> 01113
+	// Genesis Cycle
+	//	|- What Lies Ahead 		-- 02001 -> 02020
+	//	|- Trace Amounts		-- 02021 -> 02040
+	//	|- Cyber Exodus			-- 02041 -> 02060
+	//	|- A Study In Static	-- 02061 -> 02080
+	//	|- Humanity's Shadow	-- 02081 -> 02100
+	//	|- Future Proof			-- 02101 -> 02120
+	//	|----------------------------------------
+	// Creation and Control		-- 03001 -> 03055
+	// Spin Cycle
+	//	|- Opening Moves		-- 04001 -> 04020
+	//	|- Second Thoughts		-- 04021 -> 04040
+	//	|- Mala Tempora			-- 04041 -> 04060
+	//	|- True Colors			-- 04061 -> 04080
+	//	|- Fear and Loathing	-- 04081 -> 04100
+	//	|- Double Time			-- 04101 -> 04120
+	//	|----------------------------------------
+	// Honor and Profit			-- 05001 -> 05055
+	// Lunar Cycle
+	//	|- Upstalk				-- 06001 -> 06020
+	//	|- The Spaces Between	-- 06021 -> 06040
+	//	|- First Contact		-- 06041 -> 06060
+	//	|- Up and Over			-- 06061 -> 06080
+	//	|- All That Remains		-- 06081 -> 06100
+	//	|-						-- 06101 -> 06120
+	
+	//getSetData(1001, 1003)		// TEST
+	getSetData(1001, 1113)	// Core
+	//getSetData(2001, 2120)	// Genesis
+	//getSetData(3001, 3055)	// Creation & Control
+	//getSetData(4001, 4120)	// Spin
+	//getSetData(5001, 5055)	// Honor & Profit
 }
