@@ -1,67 +1,12 @@
-package main
+package cardData
 
 import "fmt"
 import "net/http"
 import "io"
 import "io/ioutil"
-import "encoding/json"
 import "errors"
 import "os"
 import "strconv"
-
-type RunnerCard struct {
-	LastModified 	string 	`json:"last-modified"`
-	Code 			string	`json:"code"`
-	Title			string	`json:"title"`
-	Type			string	`json:"type"`
-	Type_Code		string	`json:"type_code"`
-	Subtype			string	`json:"subtype"`
-	Subtype_Code	string	`json:"subtype_code"`
-	Text			string	`json:"text"`
-	BaseLink		int		`json:"baselink"`
-	Faction			string	`json:"faction"`
-	Faction_Code	string	`json:"faction_code"`
-	Faction_Letter	string	`json:"faction_letter"`
-	Flavor			string	`json:"flavor"`
-	Illustrator		string	`json:"illustrator"`
-	InfluenceLimit	int		`json:"influencelimit"`
-	MinimumDeckSize	int		`json:"minimumdecksize"`
-	Number			int		`json:"number"`
-	Quantity		int		`json:"quantity"`
-	SetName			string	`json:"setname"`
-	Set_Code		string	`json:"set_code"`
-	Side			string	`json:"side"`
-	Side_Code		string	`json:"side_code"`
-	Uniqueness		bool	`json:"uniqueness"`
-	CycleNumber		int		`json:"cyclenumber"`
-	URL				string	`json:"url"`
-	ImageSrc		string	`json:"imagesrc"`
-	LargeImageSrc	string	`json:"largeimagesrc"`
-}
-
-const (
-	_ = iota
-	core
-	wla	
-	ta
-	ca
-	asis
-	hs
-	fp
-	cac
-	om
-	st
-	mt
-	tc
-	fal
-	dt
-	hap
-	up
-	tsb
-	fc
-	uao
-	atr
-)
 
 const CARDPATH string = "/dev/Go/src/github.com/veille/GoRunner/cards"
 
@@ -140,7 +85,7 @@ func exists(path string) (bool, error) {
 func createCardFile(card *RunnerCard) error {
 	cardCode := card.Code[(len(card.Code) - 3): (len(card.Code))]
 
-	// path = /set/side/faction/
+	// path = /dir/set/
 	path := fmt.Sprintf("%s/%s/", CARDPATH, card.Set_Code)
 	pathExists, err := exists(path)
 	if (!pathExists) {
@@ -182,6 +127,8 @@ func createCardFile(card *RunnerCard) error {
 		check(err)
 	} else {
 		fmt.Println("Image already created")
+		// DEBUG
+		//fmt.Printf("Card Code: %s\n", cardCode)
 	}
 	return nil
 }
@@ -275,38 +222,66 @@ func alreadyRetrieved(code string) bool {
 	return pathExists
 }
 
-func main() {	
-	// Core Set 				-- 01001 -> 01113
-	// Genesis Cycle
-	//	|- What Lies Ahead 		-- 02001 -> 02020
-	//	|- Trace Amounts		-- 02021 -> 02040
-	//	|- Cyber Exodus			-- 02041 -> 02060
-	//	|- A Study In Static	-- 02061 -> 02080
-	//	|- Humanity's Shadow	-- 02081 -> 02100
-	//	|- Future Proof			-- 02101 -> 02120
-	//	|----------------------------------------
-	// Creation and Control		-- 03001 -> 03055
-	// Spin Cycle
-	//	|- Opening Moves		-- 04001 -> 04020
-	//	|- Second Thoughts		-- 04021 -> 04040
-	//	|- Mala Tempora			-- 04041 -> 04060
-	//	|- True Colors			-- 04061 -> 04080
-	//	|- Fear and Loathing	-- 04081 -> 04100
-	//	|- Double Time			-- 04101 -> 04120
-	//	|----------------------------------------
-	// Honor and Profit			-- 05001 -> 05055
-	// Lunar Cycle
-	//	|- Upstalk				-- 06001 -> 06020
-	//	|- The Spaces Between	-- 06021 -> 06040
-	//	|- First Contact		-- 06041 -> 06060
-	//	|- Up and Over			-- 06061 -> 06080
-	//	|- All That Remains		-- 06081 -> 06100
-	//	|-						-- 06101 -> 06120
-	
-	//getSetData(1001, 1003)		// TEST
+func getTest() {
+	getSetData(1001, 1003)	// TEST
+}
+
+/// PRE-DOWNLOAD CARD CHECKING IS BROKEN FOR ALL CARDS AFTER 2020
+// Core Set 				-- 01001 -> 01113
+// Genesis Cycle
+//	|- What Lies Ahead 		-- 02001 -> 02020
+//	|- Trace Amounts		-- 02021 -> 02040
+//	|- Cyber Exodus			-- 02041 -> 02060
+//	|- A Study In Static	-- 02061 -> 02080
+//	|- Humanity's Shadow	-- 02081 -> 02100
+//	|- Future Proof			-- 02101 -> 02120
+//	|----------------------------------------
+// Creation and Control		-- 03001 -> 03055
+// Spin Cycle
+//	|- Opening Moves		-- 04001 -> 04020
+//	|- Second Thoughts		-- 04021 -> 04040
+//	|- Mala Tempora			-- 04041 -> 04060
+//	|- True Colors			-- 04061 -> 04080
+//	|- Fear and Loathing	-- 04081 -> 04100
+//	|- Double Time			-- 04101 -> 04120
+//	|----------------------------------------
+// Honor and Profit			-- 05001 -> 05055
+// Lunar Cycle
+//	|- Upstalk				-- 06001 -> 06020
+//	|- The Spaces Between	-- 06021 -> 06040
+//	|- First Contact		-- 06041 -> 06060
+//	|- Up and Over			-- 06061 -> 06080
+//	|- All That Remains		-- 06081 -> 06100
+//	|-						-- 06101 -> 06120
+
+func getAll() {
 	getSetData(1001, 1113)	// Core
-	//getSetData(2001, 2120)	// Genesis
-	//getSetData(3001, 3055)	// Creation & Control
-	//getSetData(4001, 4120)	// Spin
-	//getSetData(5001, 5055)	// Honor & Profit
+	getSetData(2001, 2120)	// Genesis
+	getSetData(3001, 3055)	// Creation & Control
+	getSetData(4001, 4120)	// Spin
+	getSetData(5001, 5055)	// Honor & Profit
+}
+
+func getCore() {
+	getSetData(1001, 1113)	// Core
+}
+
+func getGenesis() {
+	getSetData(2001, 2120)	// Genesis
+}
+
+func getCreationAndControl() {
+	getSetData(3001, 3055)	// Creation & Control
+}
+
+func getSpin() {
+	getSetData(4001, 4120)	// Spin
+}
+
+func getHonorAndProfit() {
+	getSetData(5001, 5055)	// Honor & Profit
+}
+
+func getLunar() {
+	// Add when lunar cycle is released
 }
