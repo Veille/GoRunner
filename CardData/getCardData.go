@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 )
 
 type RunnerCard struct {
@@ -80,9 +81,6 @@ func main() {
 	case "all":
 		getAll()
 	}
-	//print("CARDPATH: " + CARDPATH + "\n")
-	//print("Path flag: " + *pathFlag + "\n")
-	//getAll()
 }
 
 // Generates a request to a URL and returns the content found
@@ -256,6 +254,7 @@ func getSetData(startCode, endCode int) {
 	}
 }
 
+// Converts the set code supplied by netrunnerdb to a usable string to save cards
 func getSetName(setCode string) (string, error) {
 	intSetCode, err := strconv.Atoi(setCode)
 	check(err)
@@ -305,6 +304,7 @@ func getSetName(setCode string) (string, error) {
 	return "", err
 }
 
+// Returns True if the card data already exists for the supplied card
 func alreadyRetrieved(code string) bool {
 	setCode := code[0 : len(code)-3]
 	cardCode := code[len(code)-3 : len(code)]
@@ -351,11 +351,32 @@ func getTest() {
 //	|-						-- 06101 -> 06120
 
 func getAll() {
-	go getSetData(1001, 1113) // Core
-	go getSetData(2001, 2120) // Genesis
-	go getSetData(3001, 3055) // Creation & Control
-	go getSetData(4001, 4120) // Spin
-	getSetData(5001, 5055)    // Honor & Profit
+	// Create a WaitGroup to wait for all goroutines to finish executing
+	var wg sync.WaitGroup
+	wg.Add(5)
+	go func() {
+		defer wg.Done()
+		getSetData(1001, 1113) // Core
+	}()
+	go func() {
+		defer wg.Done()
+		getSetData(2001, 2120) // Genesis
+	}()
+	go func() {
+		defer wg.Done()
+		getSetData(3001, 3055) // Creation & Control
+	}()
+	go func() {
+		defer wg.Done()
+		getSetData(4001, 4120) // Spin
+	}()
+	go func() {
+		defer wg.Done()
+		getSetData(5001, 5055) // Honor & Profit
+	}()
+
+	// Wait for all goroutines to finish
+	wg.Wait()
 }
 
 func getCore() {
